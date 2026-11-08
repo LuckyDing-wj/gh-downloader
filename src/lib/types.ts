@@ -42,10 +42,17 @@ export interface SearchHistoryEntry {
   queriedAt: string;
 }
 
+export interface GithubTokenEntry {
+  label: string;
+  token: string;
+  login: string;
+}
+
 export interface AppConfig {
   downloadDir: string;
   proxyMode: ProxyMode;
   proxyUrl: string;
+  githubTokens: GithubTokenEntry[];
 }
 
 export type DownloadStatus = 'queued' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled';

@@ -25,6 +25,7 @@ type TaskMap = Arc<Mutex<HashMap<String, DownloadTask>>>;
 struct DownloadJob {
     app: AppHandle,
     config: AppConfig,
+    token: Option<String>,
     asset: crate::models::Asset,
     task: DownloadTask,
     part: PathBuf,
@@ -51,8 +52,9 @@ pub async fn start(
     owner: String,
     repo: String,
     asset_id: i64,
+    token: Option<String>,
 ) -> Result<DownloadTask, String> {
-    let asset = github::resolve_asset(&owner, &repo, asset_id, &config).await?;
+    let asset = github::resolve_asset(&owner, &repo, asset_id, &config, token.as_deref()).await?;
     let safe_name = sanitize_filename(&asset.name)?;
     if asset.size as u64 > github::MAX_DOWNLOAD_BYTES {
         return Err("文件超过允许的最大下载大小（2 GiB）".to_owned());
@@ -92,6 +94,7 @@ pub async fn start(
         let result = run(DownloadJob {
             app,
             config,
+            token,
             asset,
             task,
             part,
@@ -122,6 +125,7 @@ async fn run(job: DownloadJob) -> Result<(), String> {
     let DownloadJob {
         app,
         config,
+        token,
         asset,
         mut task,
         part,
@@ -162,7 +166,7 @@ async fn run(job: DownloadJob) -> Result<(), String> {
             }
             return Err("下载取消信号异常".to_owned());
         }
-        response = github::open_asset(&client, &url, (downloaded > 0).then_some(downloaded), validator) => response?,
+        response = github::open_asset(&client, &url, (downloaded > 0).then_some(downloaded), validator, token.as_deref()) => response?,
     };
 
     if response.status() == reqwest::StatusCode::RANGE_NOT_SATISFIABLE && downloaded > 0 {

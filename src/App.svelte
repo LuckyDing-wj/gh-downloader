@@ -13,7 +13,7 @@
 
   let url = '';
   let repository: Repository | null = null;
-  let config: AppConfig = { downloadDir: '', proxyMode: 'none', proxyUrl: '' };
+  let config: AppConfig = { downloadDir: '', proxyMode: 'none', proxyUrl: '', githubTokens: [] };
   let tasks: DownloadTask[] = [];
   let loading = false;
   let error = '';

@@ -10,8 +10,10 @@ use tokio::sync::oneshot;
 
 #[tauri::command]
 pub async fn fetch_releases(url: String, page: u32) -> Result<Repository, String> {
-    let config = config::load()?;
-    github::fetch(&url, page.max(1), &config).await
+    let mut config = config::load()?;
+    let (owner, _) = github::parse_repo_url(&url)?;
+    let token = github::select_token(&mut config, Some(&owner)).await;
+    github::fetch(&url, page.max(1), &config, token.as_deref()).await
 }
 
 #[tauri::command]
@@ -45,8 +47,9 @@ pub async fn start_download(
     repo: String,
     asset_id: i64,
 ) -> Result<DownloadTask, String> {
-    let config = config::load()?;
-    download::start(app, state, config, owner, repo, asset_id).await
+    let mut config = config::load()?;
+    let token = github::select_token(&mut config, Some(&owner)).await;
+    download::start(app, state, config, owner, repo, asset_id, token).await
 }
 
 #[tauri::command]

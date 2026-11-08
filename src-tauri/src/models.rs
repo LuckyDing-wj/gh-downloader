@@ -50,6 +50,18 @@ pub enum ProxyMode {
     Custom,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GithubTokenEntry {
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub token: String,
+    /// Token 所属账号登录名，首次使用时通过 GitHub /user 接口解析并缓存。
+    #[serde(default)]
+    pub login: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
@@ -58,6 +70,11 @@ pub struct AppConfig {
     pub proxy_mode: ProxyMode,
     #[serde(default)]
     pub proxy_url: String,
+    /// 旧版单 Token 字段，仅用于读取历史配置后迁移到 github_tokens。
+    #[serde(default)]
+    pub github_token: String,
+    #[serde(default)]
+    pub github_tokens: Vec<GithubTokenEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

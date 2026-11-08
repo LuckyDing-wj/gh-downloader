@@ -58,7 +58,7 @@ async function fetchReleasesInBrowser(input: string, page: number): Promise<Repo
 
 export const fetchReleases = (url: string, page = 1) => isTauri() ? invoke<Repository>('fetch_releases', { url, page }) : fetchReleasesInBrowser(url, page);
 
-const defaultConfig = (): AppConfig => ({ downloadDir: '浏览器默认下载目录', proxyMode: 'none', proxyUrl: '' });
+const defaultConfig = (): AppConfig => ({ downloadDir: '浏览器默认下载目录', proxyMode: 'none', proxyUrl: '', githubTokens: [] });
 
 export async function getConfig() {
   if (isTauri()) return invoke<AppConfig>('get_config');

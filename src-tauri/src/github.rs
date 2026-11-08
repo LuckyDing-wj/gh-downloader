@@ -1,4 +1,4 @@
-use crate::models::{Asset, ProxyMode, Release, Repository};
+use crate::models::{AppConfig, Asset, GithubTokenEntry, ProxyMode, Release, Repository};
 use reqwest::{header, redirect::Policy, Client, ClientBuilder, Response};
 use serde::Deserialize;
 use std::time::Duration;
@@ -49,6 +49,10 @@ struct ApiAsset {
     browser_download_url: String,
     content_type: String,
     download_count: i64,
+}
+#[derive(Debug, Deserialize)]
+struct ApiUser {
+    login: String,
 }
 
 pub fn parse_repo_url(input: &str) -> Result<(String, String), String> {
@@ -133,10 +137,103 @@ pub fn client(proxy: &ProxyMode, proxy_url: &str) -> Result<Client, String> {
     builder.build().map_err(|e| e.to_string())
 }
 
+/// 由本地配置的 Token 生成 Bearer 请求头；Token 为空时返回 None（匿名访问）。
+fn bearer_value(token: Option<&str>) -> Option<header::HeaderValue> {
+    let token = token?.trim();
+    if token.is_empty() {
+        return None;
+    }
+    header::HeaderValue::from_str(&format!("Bearer {token}")).ok()
+}
+
+/// 选择用于请求的 Token：优先匹配仓库 owner 对应账号，否则用第一个可用 Token。
+fn pick_token_entry<'a>(
+    entries: &'a [GithubTokenEntry],
+    owner: Option<&str>,
+) -> Option<&'a GithubTokenEntry> {
+    if let Some(owner) = owner {
+        if let Some(entry) = entries.iter().find(|entry| {
+            !entry.token.trim().is_empty()
+                && !entry.login.trim().is_empty()
+                && entry.login.eq_ignore_ascii_case(owner)
+        }) {
+            return Some(entry);
+        }
+    }
+    entries
+        .iter()
+        .find(|entry| !entry.token.trim().is_empty())
+}
+
+/// 选出本次请求使用的 Token；缺失账号归属信息时通过 GitHub /user 解析并缓存到本地配置。
+pub async fn select_token(config: &mut AppConfig, owner: Option<&str>) -> Option<String> {
+    if pick_token_entry(&config.github_tokens, owner)
+        .map(|entry| !entry.login.trim().is_empty())
+        .unwrap_or(false)
+    {
+        return pick_token_entry(&config.github_tokens, owner).map(|entry| entry.token.clone());
+    }
+    let pending: Vec<String> = config
+        .github_tokens
+        .iter()
+        .filter(|entry| !entry.token.trim().is_empty() && entry.login.trim().is_empty())
+        .map(|entry| entry.token.clone())
+        .collect();
+    if !pending.is_empty() {
+        if let Ok(auth_client) = client(&config.proxy_mode, &config.proxy_url) {
+            let resolved = futures_util::future::join_all(
+                pending
+                    .iter()
+                    .map(|token| {
+                        let auth_client = auth_client.clone();
+                        async move {
+                            let login = resolve_login(&auth_client, token).await;
+                            (token.clone(), login)
+                        }
+                    }),
+            )
+            .await;
+            let mut changed = false;
+            for (token, login) in resolved {
+                let Some(login) = login else { continue };
+                if let Some(entry) = config
+                    .github_tokens
+                    .iter_mut()
+                    .find(|entry| entry.token == token && entry.login.trim().is_empty())
+                {
+                    entry.login = login;
+                    changed = true;
+                }
+            }
+            if changed {
+                let _ = crate::config::save(config);
+            }
+        }
+    }
+    pick_token_entry(&config.github_tokens, owner).map(|entry| entry.token.clone())
+}
+
+async fn resolve_login(auth_client: &Client, token: &str) -> Option<String> {
+    auth_client
+        .get("https://api.github.com/user")
+        .header(header::ACCEPT, "application/vnd.github+json")
+        .header(header::AUTHORIZATION, bearer_value(Some(token))?)
+        .send()
+        .await
+        .ok()?
+        .error_for_status()
+        .ok()?
+        .json::<ApiUser>()
+        .await
+        .ok()
+        .map(|user| user.login)
+}
+
 pub async fn fetch(
     url: &str,
     page: u32,
     config: &crate::models::AppConfig,
+    token: Option<&str>,
 ) -> Result<Repository, String> {
     let (owner, name) = parse_repo_url(url)?;
     let client = client(&config.proxy_mode, &config.proxy_url)?;
@@ -145,6 +242,9 @@ pub async fn fetch(
         header::ACCEPT,
         header::HeaderValue::from_static("application/vnd.github+json"),
     );
+    if let Some(value) = bearer_value(token) {
+        headers.insert(header::AUTHORIZATION, value);
+    }
     let repo: ApiRepo = client
         .get(format!("https://api.github.com/repos/{owner}/{name}"))
         .headers(headers.clone())
@@ -224,6 +324,7 @@ pub async fn resolve_asset(
     repo: &str,
     asset_id: i64,
     config: &crate::models::AppConfig,
+    token: Option<&str>,
 ) -> Result<Asset, String> {
     if asset_id <= 0
         || owner.is_empty()
@@ -234,11 +335,15 @@ pub async fn resolve_asset(
         return Err("仓库或 Asset 标识无效".to_owned());
     }
     let client = client(&config.proxy_mode, &config.proxy_url)?;
-    let response = client
+    let mut request = client
         .get(format!(
             "https://api.github.com/repos/{owner}/{repo}/releases/assets/{asset_id}"
         ))
-        .header(header::ACCEPT, "application/vnd.github+json")
+        .header(header::ACCEPT, "application/vnd.github+json");
+    if let Some(value) = bearer_value(token) {
+        request = request.header(header::AUTHORIZATION, value);
+    }
+    let response = request
         .send()
         .await
         .map_err(|e| format!("获取 Asset 信息失败：{e}"))?
@@ -253,8 +358,12 @@ pub async fn open_asset(
     url: &Url,
     range_start: Option<u64>,
     if_range: Option<&str>,
+    token: Option<&str>,
 ) -> Result<Response, String> {
     let mut request = client.get(url.clone());
+    if let Some(value) = bearer_value(token) {
+        request = request.header(header::AUTHORIZATION, value);
+    }
     if let Some(start) = range_start {
         request = request.header(header::RANGE, format!("bytes={start}-"));
         if let Some(validator) = if_range {
@@ -289,7 +398,35 @@ fn github_error(error: reqwest::Error) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_repo_url, validate_asset_url};
+    use super::{parse_repo_url, pick_token_entry, validate_asset_url};
+    use crate::models::GithubTokenEntry;
+
+    fn entry(label: &str, token: &str, login: &str) -> GithubTokenEntry {
+        GithubTokenEntry {
+            label: label.to_owned(),
+            token: token.to_owned(),
+            login: login.to_owned(),
+        }
+    }
+
+    #[test]
+    fn picks_token_by_owner_then_default() {
+        let entries = vec![
+            entry("工作", "tok-a", "alice"),
+            entry("个人", "", "bob"),
+            entry("默认", "tok-c", ""),
+        ];
+        let picked = pick_token_entry(&entries, Some("Alice")).map(|e| e.token.as_str());
+        assert_eq!(picked, Some("tok-a"));
+        let default = pick_token_entry(&entries, Some("carol")).map(|e| e.token.as_str());
+        assert_eq!(default, Some("tok-a"));
+    }
+
+    #[test]
+    fn ignores_blank_tokens_when_picking() {
+        let entries = vec![entry("空", "  ", "")];
+        assert!(pick_token_entry(&entries, None).is_none());
+    }
 
     #[test]
     fn accepts_canonical_repository_urls() {
