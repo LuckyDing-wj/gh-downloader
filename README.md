@@ -2,6 +2,8 @@
 
 A desktop application for browsing GitHub releases and downloading their assets.
 
+Project website: https://luckyding-wj.github.io/gh-downloader/ (GitHub repository Settings → Pages must use GitHub Actions as the source.)
+
 ## Build
 
 Requirements: Node.js 22+, Rust stable, and the platform prerequisites for Tauri 2.

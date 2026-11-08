@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f2">
+  <meta name="description" content="gh-downloader helps you browse GitHub releases and download the right asset for Windows and macOS.">
+  <title>gh-downloader — Find the right release</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./site.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="#top" aria-label="gh-downloader home">
+      <img src="./icon.svg" width="30" height="30" alt="">
+      <span>gh-downloader</span>
+    </a>
+    <nav class="header-nav" aria-label="Main navigation">
+      <a href="#features" data-en="Features" data-zh="功能">Features</a>
+      <a href="#how" data-en="How it works" data-zh="使用方式">How it works</a>
+      <a href="https://github.com/LuckyDing-wj/gh-downloader" target="_blank" rel="noreferrer" data-en="Source" data-zh="源代码">Source</a>
+    </nav>
+    <div class="header-actions">
+      <button class="language-toggle" type="button" aria-label="Switch language">中文</button>
+      <a class="header-download" href="https://github.com/LuckyDing-wj/gh-downloader/releases/latest" target="_blank" rel="noreferrer"><span data-en="Download" data-zh="下载">Download</span><span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="kicker"><span class="status-dot"></span><span data-en="A desktop release finder" data-zh="桌面版 Release 下载工具">A desktop release finder</span></p>
+        <h1 data-en="Find the right release.\nDownload with confidence." data-zh="快速找到所需版本，\n直接下载软件包。">Find the right release.<br>Download with confidence.</h1>
+        <p class="hero-description" data-en="Paste a GitHub repository. Browse releases, compare assets and send the file straight to your downloads." data-zh="粘贴 GitHub 仓库地址，浏览版本与软件包，一键下载到本地。">Paste a GitHub repository. Browse releases, compare assets and send the file straight to your downloads.</p>
+        <div class="hero-actions">
+          <a class="button-primary" href="https://github.com/LuckyDing-wj/gh-downloader/releases/latest" target="_blank" rel="noreferrer"><span data-en="Get the latest release" data-zh="获取最新版本">Get the latest release</span><span aria-hidden="true">↗</span></a>
+          <a class="button-secondary" href="https://github.com/LuckyDing-wj/gh-downloader" target="_blank" rel="noreferrer"><span data-en="View source" data-zh="查看源代码">View source</span></a>
+        </div>
+        <div class="platform-note"><span class="platform-icon" aria-hidden="true">▣</span> Windows <span class="note-divider">·</span> macOS <span class="note-divider">·</span> Rust + Tauri</div>
+      </div>
+      <div class="product-stage" aria-label="gh-downloader interface preview">
+        <div class="preview-window">
+          <div class="preview-topbar">
+            <div class="preview-brand"><img src="./icon.svg" alt="" width="21" height="21"><strong>gh-downloader</strong></div>
+            <div class="preview-tabs"><span class="selected"><i></i>Repositories</span><span><i></i>Downloads</span><span><i></i>Settings</span></div>
+            <span class="avatar">G</span>
+          </div>
+          <div class="preview-body">
+            <div class="preview-heading"><small>GITHUB RELEASE FINDER</small><h2>Find a release</h2><p>Browse assets from any public repository.</p></div>
+            <div class="repo-search"><span class="search-icon">⌕</span><span>https://github.com/LuckyDing-wj/gh-downloader</span><b>View repository <span>↗</span></b></div>
+            <div class="repo-title"><div class="repo-avatar">PC</div><div><strong>gh-downloader</strong><small>LuckyDing-wj / gh-downloader</small></div><span class="repo-star">☆ 1.2k</span></div>
+            <div class="release-row"><div class="release-marker"></div><div class="release-info"><div><strong>v0.0.1</strong><em>Latest</em></div><small>Published release · 5 assets</small></div><span class="release-chevron">⌄</span></div>
+            <div class="asset-row"><span class="file-glyph">ZIP</span><span class="asset-name">pure-clash_windows_x64.zip</span><span class="asset-size">18.4 MB</span><span class="asset-download">↓ <span>Download</span></span></div>
+            <div class="asset-row"><span class="file-glyph file-glyph-alt">DMG</span><span class="asset-name">pure-clash_macos_universal.dmg</span><span class="asset-size">22.1 MB</span><span class="asset-download">↓ <span>Download</span></span></div>
+            <div class="preview-footer"><span><i></i> Downloading</span><div class="mini-progress"><b></b></div><small>12.5 / 18.4 MB</small></div>
+          </div>
+        </div>
+        <div class="stage-caption"><span>01</span><span data-en="Releases, assets and downloads in one focused workspace" data-zh="在一个简洁界面中浏览版本、文件与下载状态">Releases, assets and downloads in one focused workspace</span></div>
+      </div>
+    </section>
+
+    <section class="feature-band" id="features">
+      <div class="section-heading"><span class="section-index">01 / FEATURES</span><h2 data-en="Less hunting. More downloading." data-zh="少找一会儿，快下一个。">Less hunting. More downloading.</h2></div>
+      <div class="features-grid">
+        <article class="feature"><span class="feature-number">01</span><div class="feature-icon icon-release" aria-hidden="true">⌘</div><h3 data-en="Releases at a glance" data-zh="版本一目了然">Releases at a glance</h3><p data-en="See tags, dates and release assets together, instead of digging through repository pages." data-zh="在同一处查看 Tag、发布日期与软件包，不必反复翻仓库页面。">See tags, dates and release assets together, instead of digging through repository pages.</p></article>
+        <article class="feature"><span class="feature-number">02</span><div class="feature-icon icon-assets" aria-hidden="true">↓</div><h3 data-en="The asset you need" data-zh="快速定位安装包">The asset you need</h3><p data-en="Compare filenames and sizes, then download the right Windows or macOS build." data-zh="对比文件名与体积，找到适合 Windows 或 macOS 的构建版本。">Compare filenames and sizes, then download the right Windows or macOS build.</p></article>
+        <article class="feature"><span class="feature-number">03</span><div class="feature-icon icon-control" aria-hidden="true">◉</div><h3 data-en="Your download setup" data-zh="下载方式由你掌控">Your download setup</h3><p data-en="Choose a destination folder, configure your proxy and monitor task progress." data-zh="自定义保存目录与代理，并查看任务进度。">Choose a destination folder, configure your proxy and monitor task progress.</p></article>
+      </div>
+    </section>
+
+    <section class="how-section" id="how">
+      <div class="section-heading"><span class="section-index">02 / WORKFLOW</span><h2 data-en="From repo to file in three steps." data-zh="三步，从仓库到文件。">From repo to file in three steps.</h2></div>
+      <div class="steps">
+        <article><span>01</span><h3 data-en="Paste a repository" data-zh="粘贴仓库地址">Paste a repository</h3><p data-en="Use a public GitHub repository URL." data-zh="输入公开 GitHub 仓库地址。">Use a public GitHub repository URL.</p></article>
+        <div class="step-rule"></div>
+        <article><span>02</span><h3 data-en="Choose a release asset" data-zh="选择 Release 文件">Choose a release asset</h3><p data-en="Browse tags and compare available files." data-zh="浏览 Tag 并比较可下载文件。">Browse tags and compare available files.</p></article>
+        <div class="step-rule"></div>
+        <article><span>03</span><h3 data-en="Download locally" data-zh="下载到本地">Download locally</h3><p data-en="Track progress in the desktop app." data-zh="在桌面应用中查看下载进度。">Track progress in the desktop app.</p></article>
+      </div>
+    </section>
+
+    <section class="download-band">
+      <div><span class="section-index">READY WHEN YOU ARE</span><h2 data-en="Get gh-downloader." data-zh="获取 gh-downloader。">Get gh-downloader.</h2><p data-en="Free and open source. Windows and macOS builds are available from GitHub Releases." data-zh="免费开源。Windows 和 macOS 安装包发布于 GitHub Releases。">Free and open source. Windows and macOS builds are available from GitHub Releases.</p></div>
+      <a class="button-primary" href="https://github.com/LuckyDing-wj/gh-downloader/releases/latest" target="_blank" rel="noreferrer"><span data-en="Download latest" data-zh="下载最新版">Download latest</span><span aria-hidden="true">↗</span></a>
+    </section>
+  </main>
+  <footer class="site-footer"><a class="wordmark" href="#top"><img src="./icon.svg" width="24" height="24" alt=""><span>gh-downloader</span></a><span data-en="Open source · Built with Rust and Tauri" data-zh="开源软件 · 使用 Rust 与 Tauri 构建">Open source · Built with Rust and Tauri</span><a href="https://github.com/LuckyDing-wj/gh-downloader" target="_blank" rel="noreferrer">GitHub ↗</a></footer>
+  <script src="./site.js" defer></script>
+</body>
+</html>
