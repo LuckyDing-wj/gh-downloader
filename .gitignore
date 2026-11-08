@@ -1,0 +1,32 @@
+# 前端依赖与构建产物
+node_modules/
+dist/
+.vite/
+
+# Rust / Tauri 构建产物
+target/
+src-tauri/target/
+
+# 本地配置与敏感信息
+.env
+.env.*
+!.env.example
+
+# 日志与临时文件
+*.log
+*.tmp
+*.temp
+*.part
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 操作系统与编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 本地测试截图与覆盖率
+coverage/
+gui-test-screenshots/
