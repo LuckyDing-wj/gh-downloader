@@ -11,7 +11,7 @@
   import type { AppConfig, Asset, DownloadTask, Repository, SearchHistoryEntry } from './lib/types';
   import { isDesktopRuntime, mergeTaskSnapshot, recordSearchHistory } from './lib/frontend';
 
-  let url = 'https://github.com/prime-zt/pure-clash';
+  let url = '';
   let repository: Repository | null = null;
   let config: AppConfig = { downloadDir: '', proxyMode: 'none', proxyUrl: '' };
   let tasks: DownloadTask[] = [];
