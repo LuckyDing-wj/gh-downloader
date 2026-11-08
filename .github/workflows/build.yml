@@ -45,6 +45,18 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
+      - name: Locate Tauri bundler tools
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: Add-Content $env:GITHUB_ENV "TAURI_TOOLS=$env:LOCALAPPDATA\tauri"
+
+      - name: Cache Tauri bundler tools
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TAURI_TOOLS }}
+          key: tauri-bundler-tools-${{ runner.os }}
+
       - name: Install frontend dependencies
         run: npm ci
 
