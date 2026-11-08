@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { AppConfig, Asset, DownloadTask, Repository } from './types';
+import type { AppConfig, Asset, DownloadTask, Repository, SearchHistoryEntry } from './types';
 import { parseRepoUrl } from './frontend';
 
 const isTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -81,3 +81,17 @@ export async function startDownload(owner: string, repo: string, assetId: number
 
 export const cancelDownload = (taskId: string) => isTauri() ? invoke<void>('cancel_download', { taskId }) : Promise.resolve();
 export const getDownloadTasks = () => isTauri() ? invoke<DownloadTask[]>('get_download_tasks') : Promise.resolve([]);
+
+export async function getSearchHistory(): Promise<SearchHistoryEntry[]> {
+  try { return JSON.parse(localStorage.getItem('gh-downloader-history') || '[]') as SearchHistoryEntry[]; } catch { return []; }
+}
+
+export async function saveSearchHistory(history: SearchHistoryEntry[]) {
+  localStorage.setItem('gh-downloader-history', JSON.stringify(history));
+  return history;
+}
+
+export async function clearSearchHistory() {
+  localStorage.removeItem('gh-downloader-history');
+  return [];
+}

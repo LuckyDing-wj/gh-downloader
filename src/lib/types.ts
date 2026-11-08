@@ -35,6 +35,13 @@ export interface Repository {
   hasMoreReleases: boolean;
 }
 
+export interface SearchHistoryEntry {
+  owner: string;
+  repo: string;
+  url: string;
+  queriedAt: string;
+}
+
 export interface AppConfig {
   downloadDir: string;
   proxyMode: ProxyMode;

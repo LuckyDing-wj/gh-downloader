@@ -6,9 +6,10 @@
   import ReleaseList from './lib/components/ReleaseList.svelte';
   import DownloadPanel from './lib/components/DownloadPanel.svelte';
   import SettingsPanel from './lib/components/SettingsPanel.svelte';
-  import { cancelDownload, chooseDownloadDir, fetchReleases, getConfig, getDownloadTasks, saveConfig, startDownload } from './lib/api';
-  import type { AppConfig, Asset, DownloadTask, Repository } from './lib/types';
-  import { isDesktopRuntime, mergeTaskSnapshot } from './lib/frontend';
+  import HistoryPanel from './lib/components/HistoryPanel.svelte';
+  import { cancelDownload, chooseDownloadDir, clearSearchHistory, fetchReleases, getSearchHistory, getConfig, getDownloadTasks, saveConfig, saveSearchHistory, startDownload } from './lib/api';
+  import type { AppConfig, Asset, DownloadTask, Repository, SearchHistoryEntry } from './lib/types';
+  import { isDesktopRuntime, mergeTaskSnapshot, recordSearchHistory } from './lib/frontend';
 
   let url = 'https://github.com/prime-zt/pure-clash';
   let repository: Repository | null = null;
@@ -24,6 +25,7 @@
   let searchGeneration = 0;
   let repoUrl = '';
   let loadingMore = false;
+  let history: SearchHistoryEntry[] = [];
   const desktop = isDesktopRuntime();
 
   onMount(() => {
@@ -42,6 +44,7 @@
       else unlistenProgress = cleanup;
     } catch { /* 静态预览 */ }
     try { const value = await getConfig(); if (!disposed) config = value; } catch { /* 浏览器预览模式允许无后端运行 */ }
+    try { const entries = await getSearchHistory(); if (!disposed) history = entries; } catch { /* 历史读取失败时从空列表开始 */ }
     await refreshTasks();
   }
 
@@ -78,9 +81,35 @@
     const generation = ++searchGeneration;
     loadingMore = false;
     url = value.trim(); repoUrl = url; error = ''; notice = ''; repository = null; loading = true;
-    try { const result = await fetchReleases(url, 1); if (generation === searchGeneration) repository = result; }
+    try {
+      const result = await fetchReleases(url, 1);
+      if (generation === searchGeneration) {
+        repository = result;
+        await rememberSearch(result);
+      }
+    }
     catch (e) { if (generation === searchGeneration) error = String(e).replace(/^Error: /, ''); }
     finally { if (generation === searchGeneration) loading = false; }
+  }
+
+  async function rememberSearch(repository: Repository) {
+    const entry: SearchHistoryEntry = {
+      owner: repository.owner,
+      repo: repository.name,
+      url: `${repository.owner}/${repository.name}`,
+      queriedAt: new Date().toISOString()
+    };
+    history = recordSearchHistory(history, entry);
+    try { await saveSearchHistory(history); } catch { /* 历史保存失败不影响查询 */ }
+  }
+
+  async function selectHistory(target: string) {
+    await search(`https://github.com/${target}`);
+  }
+
+  async function wipeHistory() {
+    history = [];
+    try { await clearSearchHistory(); } catch { /* 清空失败下次启动仍会重载 */ }
   }
 
   async function loadMoreReleases() {
@@ -166,13 +195,20 @@
       <SearchBar value={url} {loading} onSearch={search} />
       {#if error}<div class="alert error" role="alert"><AlertCircle size={16} />{error}</div>{/if}
       {#if notice}<div class="alert notice"><AlertCircle size={16} />{notice}</div>{/if}
-      {#if repository}
-        <div class="repo-head"><div class="repo-logo"><Github size={20} /></div><div class="repo-title"><h2>{repository.name}</h2><span>{repository.fullName}</span></div><div class="repo-stats"><span><Star size={13} /> {formatCount(repository.stargazersCount)}</span><span><GitFork size={13} /> {formatCount(repository.forksCount)}</span><a href={repository.htmlUrl} target="_blank" rel="noreferrer" title="在 GitHub 打开"><ExternalLink size={14} /></a></div></div>
-        <section class="release-column repository-releases"><ReleaseList releases={repository.releases} onDownload={download} onLoadMore={loadMoreReleases} {loadingMore} hasMore={repository.hasMoreReleases} /></section>
-      {:else if loading}
+      {#if loading}
         <div class="loading-state" role="status" aria-live="polite"><LoaderCircle class="spin" size={24} />正在读取 GitHub Releases…</div>
       {:else}
-        <div class="welcome"><Github size={36} /><strong>输入仓库地址开始</strong><span>支持公开 GitHub 仓库和自定义代理</span></div>
+        <div class="layout">
+          <section class="release-column">
+            {#if repository}
+              <div class="repo-head"><div class="repo-logo"><Github size={20} /></div><div class="repo-title"><h2>{repository.name}</h2><span>{repository.fullName}</span></div><div class="repo-stats"><span><Star size={13} /> {formatCount(repository.stargazersCount)}</span><span><GitFork size={13} /> {formatCount(repository.forksCount)}</span><a href={repository.htmlUrl} target="_blank" rel="noreferrer" title="在 GitHub 打开"><ExternalLink size={14} /></a></div></div>
+              <section class="repository-releases"><ReleaseList releases={repository.releases} onDownload={download} onLoadMore={loadMoreReleases} {loadingMore} hasMore={repository.hasMoreReleases} /></section>
+            {:else}
+              <div class="welcome"><Github size={36} /><strong>输入仓库地址开始</strong><span>支持公开 GitHub 仓库和自定义代理</span></div>
+            {/if}
+          </section>
+          <aside><HistoryPanel {history} onSelect={selectHistory} onClear={wipeHistory} /></aside>
+        </div>
       {/if}
     </main>
   {:else if activeNav === '下载'}

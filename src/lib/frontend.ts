@@ -1,4 +1,6 @@
-import type { DownloadTask } from './types';
+import type { DownloadTask, SearchHistoryEntry } from './types';
+
+export const SEARCH_HISTORY_LIMIT = 50;
 
 export function parseRepoUrl(input: string) {
   let url: URL;
@@ -29,6 +31,11 @@ export function mergeTaskSnapshot(tasks: DownloadTask[], snapshot: DownloadTask[
   const merged = new Map(tasks.map((task) => [task.id, task]));
   for (const task of snapshot) merged.set(task.id, mergeTask(merged.get(task.id), task));
   return [...merged.values()].sort((a, b) => b.id.localeCompare(a.id));
+}
+
+export function recordSearchHistory(history: SearchHistoryEntry[], entry: SearchHistoryEntry): SearchHistoryEntry[] {
+  const deduped = history.filter((item) => !(item.owner === entry.owner && item.repo === entry.repo));
+  return [entry, ...deduped].slice(0, SEARCH_HISTORY_LIMIT);
 }
 
 export function isDesktopRuntime(): boolean {
