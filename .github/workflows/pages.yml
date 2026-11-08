@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'website/**'
-      - '.github/workflows/pages.yml'
 
 permissions:
   contents: read
@@ -25,9 +22,15 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Require Pages admin token
+        env:
+          PAGES_ADMIN_TOKEN: ${{ secrets.PAGES_ADMIN_TOKEN }}
+        run: test -n "$PAGES_ADMIN_TOKEN"
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:
+          token: ${{ secrets.PAGES_ADMIN_TOKEN }}
           enablement: true
 
       - name: Upload website artifact
