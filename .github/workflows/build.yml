@@ -2,8 +2,9 @@ name: Build and release desktop app
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
-    branches: [main]
+    branches: ['**']
     tags: ['v*']
 
 permissions:
