@@ -7,13 +7,21 @@ on:
     branches: [main]
     tags: ['v*']
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 permissions:
   contents: read
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -46,43 +54,45 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
-      - name: Locate Tauri bundler tools
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: Add-Content $env:GITHUB_ENV "TAURI_TOOLS=$env:LOCALAPPDATA\tauri"
-
-      - name: Cache Tauri bundler tools
-        if: matrix.os == 'windows-latest'
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.TAURI_TOOLS }}
-          key: tauri-bundler-tools-${{ runner.os }}
-
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Validate release tag version
-        if: startsWith(github.ref, 'refs/tags/v')
+      # 版本号三处必须一致，打 tag 时还要与 tag 一致，避免打出版本错乱的安装包
+      - name: Verify version consistency
         shell: bash
         run: |
           APP_VERSION=$(node -p "require('./package.json').version")
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          test "$APP_VERSION" = "$TAG_VERSION"
+          CARGO_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)
+          CONF_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "package.json=$APP_VERSION Cargo.toml=$CARGO_VERSION tauri.conf.json=$CONF_VERSION"
+          test "$APP_VERSION" = "$CARGO_VERSION"
+          test "$APP_VERSION" = "$CONF_VERSION"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            test "$APP_VERSION" = "${GITHUB_REF_NAME#v}"
+          fi
 
-      - name: Check frontend and Rust
-        run: |
-          npm run check
-          npm run test
-          npm run build
-          cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
-          cargo test --manifest-path src-tauri/Cargo.toml --lib
-          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-        shell: bash
+      - name: Type check frontend
+        run: npm run check
 
+      - name: Test frontend
+        run: npm run test
+
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+
+      - name: Lint Rust
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Test Rust
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib
+
+      # PR 只跑检查，打包留给 main 和 tag，省一半时间
       - name: Build bundles
+        if: github.event_name != 'pull_request'
         run: npm run build:desktop -- --bundles ${{ matrix.bundles }}
 
       - name: Upload platform bundles
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: gh-downloader-${{ matrix.artifact }}
@@ -108,14 +118,20 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: Create release and attach installers
+      # 重复打 tag / 手工建过 Release 时也能正常补传附件
+      - name: Publish installers to release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          set -euo pipefail
           mapfile -d '' ASSETS < <(find release-assets -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \) -print0)
           if [ "${#ASSETS[@]}" -eq 0 ]; then
             echo "No installer assets were downloaded" >&2
             exit 1
           fi
-          gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" --title "$GITHUB_REF_NAME" --generate-notes
+          printf 'Uploading %d asset(s):\n' "${#ASSETS[@]}"
+          printf ' - %s\n' "${ASSETS[@]}"
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
