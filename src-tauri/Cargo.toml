@@ -1,6 +1,6 @@
 [package]
 name = "gh-downloader"
-version = "0.0.3"
+version = "0.0.4"
 description = "A lightweight GitHub release downloader"
 authors = ["gh-downloader"]
 edition = "2021"
