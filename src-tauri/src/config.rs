@@ -35,7 +35,12 @@ pub fn load() -> Result<AppConfig, String> {
 /// 旧版单 Token 配置迁移为列表，避免升级后静默丢失。
 fn migrate_legacy_token(config: &mut AppConfig) {
     let legacy = config.github_token.trim();
-    if !legacy.is_empty() && !config.github_tokens.iter().any(|e| e.token.trim() == legacy) {
+    if !legacy.is_empty()
+        && !config
+            .github_tokens
+            .iter()
+            .any(|e| e.token.trim() == legacy)
+    {
         config.github_tokens.insert(
             0,
             GithubTokenEntry {

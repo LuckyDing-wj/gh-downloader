@@ -160,9 +160,7 @@ fn pick_token_entry<'a>(
             return Some(entry);
         }
     }
-    entries
-        .iter()
-        .find(|entry| !entry.token.trim().is_empty())
+    entries.iter().find(|entry| !entry.token.trim().is_empty())
 }
 
 /// 选出本次请求使用的 Token；缺失账号归属信息时通过 GitHub /user 解析并缓存到本地配置。
@@ -181,17 +179,13 @@ pub async fn select_token(config: &mut AppConfig, owner: Option<&str>) -> Option
         .collect();
     if !pending.is_empty() {
         if let Ok(auth_client) = client(&config.proxy_mode, &config.proxy_url) {
-            let resolved = futures_util::future::join_all(
-                pending
-                    .iter()
-                    .map(|token| {
-                        let auth_client = auth_client.clone();
-                        async move {
-                            let login = resolve_login(&auth_client, token).await;
-                            (token.clone(), login)
-                        }
-                    }),
-            )
+            let resolved = futures_util::future::join_all(pending.iter().map(|token| {
+                let auth_client = auth_client.clone();
+                async move {
+                    let login = resolve_login(&auth_client, token).await;
+                    (token.clone(), login)
+                }
+            }))
             .await;
             let mut changed = false;
             for (token, login) in resolved {
