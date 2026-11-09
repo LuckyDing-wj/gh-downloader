@@ -19,7 +19,7 @@ env:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build ${{ matrix.artifact }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -29,9 +29,19 @@ jobs:
           - os: windows-latest
             artifact: windows
             bundles: nsis,msi
+            rust-target: ''
+            build-args: ''
           - os: macos-latest
-            artifact: macos
+            artifact: macos-arm64
             bundles: dmg
+            rust-target: aarch64-apple-darwin
+            build-args: --target aarch64-apple-darwin
+          # Intel Mac：在 arm64 runner 上交叉编译 x86_64
+          - os: macos-latest
+            artifact: macos-x64
+            bundles: dmg
+            rust-target: x86_64-apple-darwin
+            build-args: --target x86_64-apple-darwin
 
     steps:
       - name: Check out repository
@@ -49,10 +59,15 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Add Rust target
+        if: matrix.rust-target != ''
+        run: rustup target add ${{ matrix.rust-target }}
+
       - name: Cache Rust builds
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+          key: ${{ matrix.artifact }}
 
       - name: Install frontend dependencies
         run: npm ci
@@ -89,14 +104,14 @@ jobs:
       # PR 只跑检查，打包留给 main 和 tag，省一半时间
       - name: Build bundles
         if: github.event_name != 'pull_request'
-        run: npm run build:desktop -- --bundles ${{ matrix.bundles }}
+        run: npm run build:desktop -- --bundles ${{ matrix.bundles }} ${{ matrix.build-args }}
 
       - name: Upload platform bundles
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: gh-downloader-${{ matrix.artifact }}
-          path: src-tauri/target/release/bundle/**
+          path: src-tauri/target/**/release/bundle/**
           if-no-files-found: error
           retention-days: 14
 
