@@ -9,7 +9,7 @@
   import HistoryPanel from './lib/components/HistoryPanel.svelte';
   import { cancelDownload, chooseDownloadDir, clearSearchHistory, fetchReleases, getSearchHistory, getConfig, getDownloadTasks, saveConfig, saveSearchHistory, startDownload } from './lib/api';
   import type { AppConfig, Asset, DownloadTask, Repository, SearchHistoryEntry } from './lib/types';
-  import { isDesktopRuntime, mergeTaskSnapshot, recordSearchHistory } from './lib/frontend';
+  import { DEFAULT_PAGE_SIZE, PAGE_SIZES, isDesktopRuntime, mergeTaskSnapshot, recordSearchHistory } from './lib/frontend';
 
   let url = '';
   let repository: Repository | null = null;
@@ -24,7 +24,9 @@
   let disposed = false;
   let searchGeneration = 0;
   let repoUrl = '';
-  let loadingMore = false;
+  let page = 1;
+  let pageSize = DEFAULT_PAGE_SIZE;
+  let pageLoading = false;
   let history: SearchHistoryEntry[] = [];
   const desktop = isDesktopRuntime();
 
@@ -45,6 +47,8 @@
     } catch { /* 静态预览 */ }
     try { const value = await getConfig(); if (!disposed) config = value; } catch { /* 浏览器预览模式允许无后端运行 */ }
     try { const entries = await getSearchHistory(); if (!disposed) history = entries; } catch { /* 历史读取失败时从空列表开始 */ }
+    const savedPageSize = Number(localStorage.getItem('gh-downloader-page-size'));
+    if ((PAGE_SIZES as readonly number[]).includes(savedPageSize)) pageSize = savedPageSize;
     await refreshTasks();
   }
 
@@ -79,10 +83,11 @@
 
   async function search(value: string) {
     const generation = ++searchGeneration;
-    loadingMore = false;
+    pageLoading = false;
+    page = 1;
     url = value.trim(); repoUrl = url; error = ''; notice = ''; repository = null; loading = true;
     try {
-      const result = await fetchReleases(url, 1);
+      const result = await fetchReleases(url, 1, pageSize);
       if (generation === searchGeneration) {
         repository = result;
         await rememberSearch(result);
@@ -112,19 +117,31 @@
     try { await clearSearchHistory(); } catch { /* 清空失败下次启动仍会重载 */ }
   }
 
-  async function loadMoreReleases() {
-    if (!repository || loadingMore || !repository.hasMoreReleases) return;
+  async function goToPage(target: number, force = false) {
+    if (!repository || pageLoading) return;
+    if (!force && (target < 1 || target === page)) return;
+    if (!force && target > page && !repository.hasMoreReleases) return;
     const generation = searchGeneration;
     const currentRepository = repository;
-    loadingMore = true;
+    pageLoading = true;
     try {
-      const page = Math.floor(currentRepository.releases.length / 30) + 1;
-      const next = await fetchReleases(repoUrl, page);
+      const result = await fetchReleases(repoUrl, target, pageSize);
       if (generation !== searchGeneration || repository?.fullName !== currentRepository.fullName) return;
-      const ids = new Set(repository.releases.map((release) => release.id));
-      repository = { ...repository, releases: [...repository.releases, ...next.releases.filter((release) => !ids.has(release.id))], hasMoreReleases: next.hasMoreReleases };
+      if (result.releases.length === 0 && target > 1) { notice = '已经是最后一页'; return; }
+      repository = { ...currentRepository, releases: result.releases, hasMoreReleases: result.hasMoreReleases };
+      page = target;
     } catch (e) { if (generation === searchGeneration) error = String(e).replace(/^Error: /, ''); }
-    finally { if (generation === searchGeneration) loadingMore = false; }
+    finally { if (generation === searchGeneration) pageLoading = false; }
+  }
+
+  async function changePageSize(size: number) {
+    if (size === pageSize) return;
+    pageSize = size;
+    localStorage.setItem('gh-downloader-page-size', String(size));
+    if (!repository) { page = 1; return; }
+    searchGeneration++; // 作废进行中的翻页请求，避免旧响应覆盖
+    pageLoading = false;
+    await goToPage(1, true);
   }
 
   async function download(asset: Asset) {
@@ -202,7 +219,7 @@
           <section class="release-column">
             {#if repository}
               <div class="repo-head"><div class="repo-logo"><Github size={20} /></div><div class="repo-title"><h2>{repository.name}</h2><span>{repository.fullName}</span></div><div class="repo-stats"><span><Star size={13} /> {formatCount(repository.stargazersCount)}</span><span><GitFork size={13} /> {formatCount(repository.forksCount)}</span><a href={repository.htmlUrl} target="_blank" rel="noreferrer" title="在 GitHub 打开"><ExternalLink size={14} /></a></div></div>
-              <section class="repository-releases"><ReleaseList releases={repository.releases} onDownload={download} onLoadMore={loadMoreReleases} {loadingMore} hasMore={repository.hasMoreReleases} /></section>
+              <section class="repository-releases"><ReleaseList releases={repository.releases} onDownload={download} {page} {pageSize} onChangePage={goToPage} onChangePageSize={changePageSize} hasNext={repository.hasMoreReleases} loading={pageLoading} /></section>
             {:else}
               <div class="welcome"><Github size={36} /><strong>输入仓库地址开始</strong><span>支持公开 GitHub 仓库和自定义代理</span></div>
             {/if}

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { AppConfig, Asset, DownloadTask, Repository, SearchHistoryEntry } from './types';
-import { parseRepoUrl } from './frontend';
+import { DEFAULT_PAGE_SIZE, parseRepoUrl } from './frontend';
 
 const isTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -14,11 +14,11 @@ async function fetchJson<T>(url: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function fetchReleasesInBrowser(input: string, page: number): Promise<Repository> {
+async function fetchReleasesInBrowser(input: string, page: number, perPage: number): Promise<Repository> {
   const { owner, repo } = parseRepoUrl(input);
   const [repository, releases] = await Promise.all([
     fetchJson<{ full_name: string; name: string; owner: { login: string }; description: string | null; html_url: string; stargazers_count: number; forks_count: number; updated_at: string }>(`https://api.github.com/repos/${owner}/${repo}`),
-    fetch(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=30&page=${page}`, { headers: { Accept: 'application/vnd.github+json' } })
+    fetch(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=${perPage}&page=${page}`, { headers: { Accept: 'application/vnd.github+json' } })
   ]);
   if (!releases.ok) throw new Error(releases.status === 404 ? '找不到这个 GitHub 仓库' : `GitHub 请求失败（${releases.status}）`);
   const hasMoreReleases = (releases.headers.get('Link') || '').split(',').some((link) => link.includes('rel=\"next\"'));
@@ -56,7 +56,7 @@ async function fetchReleasesInBrowser(input: string, page: number): Promise<Repo
   };
 }
 
-export const fetchReleases = (url: string, page = 1) => isTauri() ? invoke<Repository>('fetch_releases', { url, page }) : fetchReleasesInBrowser(url, page);
+export const fetchReleases = (url: string, page = 1, perPage = DEFAULT_PAGE_SIZE) => isTauri() ? invoke<Repository>('fetch_releases', { url, page, perPage }) : fetchReleasesInBrowser(url, page, perPage);
 
 const defaultConfig = (): AppConfig => ({ downloadDir: '浏览器默认下载目录', proxyMode: 'none', proxyUrl: '', githubTokens: [] });
 

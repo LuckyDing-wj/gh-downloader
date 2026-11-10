@@ -226,6 +226,7 @@ async fn resolve_login(auth_client: &Client, token: &str) -> Option<String> {
 pub async fn fetch(
     url: &str,
     page: u32,
+    per_page: u32,
     config: &crate::models::AppConfig,
     token: Option<&str>,
 ) -> Result<Repository, String> {
@@ -252,7 +253,7 @@ pub async fn fetch(
         .map_err(|e| e.to_string())?;
     let release_response = client
         .get(format!(
-            "https://api.github.com/repos/{owner}/{name}/releases?per_page=30&page={page}"
+            "https://api.github.com/repos/{owner}/{name}/releases?per_page={per_page}&page={page}"
         ))
         .headers(headers)
         .send()

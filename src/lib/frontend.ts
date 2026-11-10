@@ -1,6 +1,8 @@
 import type { DownloadTask, SearchHistoryEntry } from './types';
 
 export const SEARCH_HISTORY_LIMIT = 50;
+export const PAGE_SIZES = [3, 5, 10, 20, 30] as const;
+export const DEFAULT_PAGE_SIZE: number = PAGE_SIZES[0];
 
 export function parseRepoUrl(input: string) {
   let url: URL;
